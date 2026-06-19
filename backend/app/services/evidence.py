@@ -8,8 +8,10 @@ from app.models import Violation
 from app.database import execute_raw
 
 def generate_case_id() -> str:
-    """Generate case ID like TV-2847."""
-    return f"TV-{random.randint(1000, 9999)}"
+    """Generate unique case ID like TV-20260619-173215-4821."""
+    now = datetime.now()
+    rand = random.randint(1000, 9999)
+    return f"TV-{now.strftime('%Y%m%d-%H%M%S')}-{rand}"
 
 def annotate_image(image_path: str, detection: dict, output_path: str):
     """Draw bounding boxes on image and save."""

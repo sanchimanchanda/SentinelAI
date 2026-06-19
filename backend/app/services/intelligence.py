@@ -1,15 +1,24 @@
+import json
+import logging
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import execute_raw
+from app.config import settings
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 class IntelligenceRequest(BaseModel):
     question: str
 
-def query_intelligence_engine(question: str) -> dict:
-    """Mock intelligence engine. Will return deterministic responses based on keywords."""
+
+# ---------------------------------------------------------------------------
+# Fallback: original keyword-matching logic (used when Gemini is unavailable)
+# ---------------------------------------------------------------------------
+def _fallback_keyword_engine(question: str) -> dict:
+    """Deterministic keyword-based responses used as a fallback."""
     q = question.lower()
-    
+
     if "corridor" in q or "route" in q:
         return {
             "answer": "Analysis of the MG Road → Silk Board corridor shows a 40% increase in transit times. The volume of repeat offenders traveling this route suggests coordinated movement.",
@@ -37,6 +46,147 @@ def query_intelligence_engine(question: str) -> dict:
                 "Dispatch towing unit to clear illegally parked vehicles."
             ]
         }
+
+
+# ---------------------------------------------------------------------------
+# DB context helpers
+# ---------------------------------------------------------------------------
+def _gather_db_context(db: Session) -> str:
+    """Query real database stats and return a formatted context string."""
+    sections: list[str] = []
+
+    # 1. Total violations & breakdown by type
+    sql_total = """
+        SELECT COUNT(*) as total,
+               SUM(CASE WHEN timestamp >= datetime('now', '-24 hours') THEN 1 ELSE 0 END) as last_24h
+        FROM violations
+    """
+    total_rows = execute_raw(db, sql_total)
+    total = total_rows[0]["total"] if total_rows else 0
+    last_24h = total_rows[0]["last_24h"] if total_rows else 0
+    sections.append(f"Total violations in database: {total} (last 24 hours: {last_24h})")
+
+    # 2. Top junctions by violation count
+    sql_junctions = """
+        SELECT junction, COUNT(*) as cnt
+        FROM violations
+        GROUP BY junction
+        ORDER BY cnt DESC
+        LIMIT 5
+    """
+    junction_rows = execute_raw(db, sql_junctions)
+    if junction_rows:
+        lines = [f"  - {r['junction']}: {r['cnt']} violations" for r in junction_rows]
+        sections.append("Top 5 junctions by violations:\n" + "\n".join(lines))
+
+    # 3. Repeat offenders summary
+    sql_offenders = """
+        SELECT plate, sightings, distinct_junctions
+        FROM repeat_offenders
+        ORDER BY sightings DESC
+        LIMIT 5
+    """
+    try:
+        offender_rows = execute_raw(db, sql_offenders)
+        if offender_rows:
+            lines = [
+                f"  - {r['plate']}: {r['sightings']} sightings across {r['distinct_junctions']} junctions"
+                for r in offender_rows
+            ]
+            sections.append("Top 5 repeat offenders (by sightings):\n" + "\n".join(lines))
+    except Exception:
+        sections.append("Repeat offenders data: unavailable")
+
+    # 4. Recent activity (last 2 hours)
+    sql_recent = """
+        SELECT type, COUNT(*) as cnt
+        FROM violations
+        WHERE timestamp >= datetime('now', '-2 hours')
+        GROUP BY type
+        ORDER BY cnt DESC
+    """
+    recent_rows = execute_raw(db, sql_recent)
+    if recent_rows:
+        lines = [f"  - {r['type']}: {r['cnt']}" for r in recent_rows]
+        sections.append("Violations in the last 2 hours by type:\n" + "\n".join(lines))
+    else:
+        sections.append("Violations in the last 2 hours: none recorded")
+
+    return "\n\n".join(sections)
+
+
+# ---------------------------------------------------------------------------
+# Gemini-powered intelligence engine
+# ---------------------------------------------------------------------------
+SYSTEM_PROMPT = (
+    "You are SentinelAI, an AI-powered traffic intelligence system for Bengaluru. "
+    "You analyze real-time violation data and provide operational intelligence to "
+    "traffic police. Answer questions based on the following real-time data from the "
+    "system database. Be specific, actionable, and concise.\n\n"
+    "You MUST respond with valid JSON only (no markdown fences, no extra text) in "
+    "exactly this structure:\n"
+    '{"answer": "<your analysis>", '
+    '"data_sources": ["<source1>", "<source2>"], '
+    '"recommendations": ["<rec1>", "<rec2>"]}\n\n'
+    "data_sources should list which data tables/views you drew from (e.g. "
+    "\"Violations Table\", \"Repeat Offenders Table\", \"Hotspots View\", "
+    "\"Corridor Graph\").\n"
+    "recommendations should be concrete operational actions for traffic police."
+)
+
+
+def query_intelligence_engine(question: str, db: Session) -> dict:
+    """
+    Query the traffic intelligence engine.
+
+    Uses Google Gemini (gemini-2.0-flash) with real DB context when the API key
+    is configured. Falls back to keyword-matching logic otherwise.
+    """
+    # --- Guard: fall back if no API key ---
+    if not settings.GEMINI_API_KEY:
+        logger.warning("GEMINI_API_KEY not configured – using fallback keyword engine.")
+        return _fallback_keyword_engine(question)
+
+    try:
+        # Gather live context from the database
+        db_context = _gather_db_context(db)
+
+        # Build the full prompt
+        prompt = (
+            f"{SYSTEM_PROMPT}\n"
+            f"--- REAL-TIME DATA ---\n{db_context}\n"
+            f"--- END DATA ---\n\n"
+            f"User question: {question}"
+        )
+
+        # Call Gemini
+        from google import genai
+
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
+        raw_text = response.text.strip()
+
+        # Strip markdown code fences if Gemini wraps the JSON
+        if raw_text.startswith("```"):
+            raw_text = raw_text.split("\n", 1)[1]  # remove opening fence line
+            raw_text = raw_text.rsplit("```", 1)[0]  # remove closing fence
+            raw_text = raw_text.strip()
+
+        parsed = json.loads(raw_text)
+
+        # Ensure the expected keys exist with correct types
+        return {
+            "answer": str(parsed.get("answer", "")),
+            "data_sources": list(parsed.get("data_sources", [])),
+            "recommendations": list(parsed.get("recommendations", [])),
+        }
+
+    except Exception as exc:
+        logger.error("Gemini API call failed, falling back to keyword engine: %s", exc)
+        return _fallback_keyword_engine(question)
 
 
 def generate_action_plan(db: Session, location: str) -> dict:

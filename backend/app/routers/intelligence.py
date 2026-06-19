@@ -7,9 +7,9 @@ from app.services.intelligence import query_intelligence_engine, IntelligenceReq
 router = APIRouter()
 
 @router.post("/intelligence")
-def ask_intelligence(req: IntelligenceRequest):
+def ask_intelligence(req: IntelligenceRequest, db: Session = Depends(get_db)):
     """Query the traffic intelligence engine."""
-    return query_intelligence_engine(req.question)
+    return query_intelligence_engine(req.question, db)
 
 class ActionPlanRequest(BaseModel):
     location: str

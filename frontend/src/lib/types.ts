@@ -104,6 +104,11 @@ export interface DetectionResult {
   annotated_image_url: string;
   junction: string;
   timestamp: string;
+  inference_time?: {
+    detection_ms: number;
+    ocr_ms: number;
+    total_ms: number;
+  };
 }
 
 export interface IntelligenceResponse {

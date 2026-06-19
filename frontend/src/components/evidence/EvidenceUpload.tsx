@@ -1,10 +1,15 @@
 "use client";
-import { useState } from "react";
-import { UploadCloud, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { UploadCloud, AlertTriangle, Loader2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { DetectionResult } from "@/lib/types";
 import { DetectionResultViewer } from "./DetectionResultViewer";
+
+interface Junction {
+  id: number;
+  name: string;
+}
 
 export function EvidenceUpload({ onDetectionComplete }: { onDetectionComplete?: (r: DetectionResult) => void }) {
   const [file, setFile] = useState<File | null>(null);
@@ -12,6 +17,18 @@ export function EvidenceUpload({ onDetectionComplete }: { onDetectionComplete?: 
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [junctions, setJunctions] = useState<Junction[]>([]);
+  const [selectedJunction, setSelectedJunction] = useState<number>(1);
+
+  useEffect(() => {
+    fetch("/api/junctions")
+      .then(r => r.json())
+      .then((data: Junction[]) => {
+        setJunctions(data);
+        if (data.length > 0) setSelectedJunction(data[0].id);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -31,7 +48,7 @@ export function EvidenceUpload({ onDetectionComplete }: { onDetectionComplete?: 
 
     const formData = new FormData();
     formData.append("image", file);
-    formData.append("junction_id", "1"); // Hardcoded to MG Road for demo
+    formData.append("junction_id", String(selectedJunction));
 
     try {
       const data = await api.detect(formData);
@@ -72,6 +89,23 @@ export function EvidenceUpload({ onDetectionComplete }: { onDetectionComplete?: 
             <p className="text-sm text-slate-400 mb-6 text-center max-w-sm">
               Select an image from a traffic camera. The Evidence Engine will run YOLOv8 detection and EasyOCR.
             </p>
+            
+            {/* Junction Selector */}
+            <div className="w-full max-w-xs mb-6">
+              <label className="flex items-center gap-1.5 text-[10px] uppercase text-slate-500 font-bold tracking-wider mb-2">
+                <MapPin className="w-3 h-3" /> Camera Location
+              </label>
+              <select 
+                value={selectedJunction}
+                onChange={(e) => setSelectedJunction(Number(e.target.value))}
+                className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 outline-none"
+              >
+                {junctions.map((j) => (
+                  <option key={j.id} value={j.id}>{j.name}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="relative">
               <input 
                 type="file" 
@@ -86,6 +120,23 @@ export function EvidenceUpload({ onDetectionComplete }: { onDetectionComplete?: 
           </>
         ) : (
           <div className="w-full flex flex-col items-center">
+            {/* Junction selector when image is selected */}
+            <div className="w-full max-w-xs mb-4">
+              <label className="flex items-center gap-1.5 text-[10px] uppercase text-slate-500 font-bold tracking-wider mb-1.5">
+                <MapPin className="w-3 h-3" /> Camera Location
+              </label>
+              <select 
+                value={selectedJunction}
+                onChange={(e) => setSelectedJunction(Number(e.target.value))}
+                disabled={isProcessing}
+                className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 outline-none disabled:opacity-50"
+              >
+                {junctions.map((j) => (
+                  <option key={j.id} value={j.id}>{j.name}</option>
+                ))}
+              </select>
+            </div>
+
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={previewUrl} alt="Preview" className="max-h-64 object-contain rounded-lg border border-slate-700 mb-6 shadow-xl" />
             <div className="flex items-center gap-4">
