@@ -3,7 +3,7 @@ import { ActionPlanAgent } from "@/components/intelligence/ActionPlanAgent";
 
 export default function IntelligencePage() {
   return (
-    <div className="flex flex-col gap-4 min-h-[calc(100vh-6rem)]">
+    <div className="flex flex-col gap-4 h-full">
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Intelligence Console</h1>
@@ -13,10 +13,10 @@ export default function IntelligencePage() {
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
-        <div className="h-[calc(100vh-10rem)]">
+        <div className="h-[600px] lg:h-full lg:min-h-0">
           <CommandBriefing />
         </div>
-        <div className="h-[calc(100vh-10rem)]">
+        <div className="h-[600px] lg:h-full lg:min-h-0">
           <ActionPlanAgent />
         </div>
       </div>

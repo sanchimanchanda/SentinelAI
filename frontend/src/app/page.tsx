@@ -36,7 +36,7 @@ export default function CommandCenter() {
   return (
     <>
       <SystemBootOverlay />
-      <div className="flex flex-col gap-3 h-[calc(100vh-5rem)]">
+      <div className="flex flex-col gap-3 h-full">
       {/* Header Row */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 text-cyan-400">

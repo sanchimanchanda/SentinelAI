@@ -18,7 +18,7 @@ export function LiveTicker() {
   const scrollItems = [...TICKER_ITEMS, ...TICKER_ITEMS];
 
   return (
-    <div className="w-full h-8 bg-slate-950/90 border-t border-slate-800/80 backdrop-blur-md flex items-center font-mono select-none overflow-hidden shrink-0 z-40 relative">
+    <div className="fixed bottom-0 left-0 w-full h-8 bg-slate-950/90 border-t border-slate-800/80 backdrop-blur-md flex items-center font-mono select-none overflow-hidden shrink-0 z-50">
       {/* Pinned Title Badge */}
       <div className="h-full px-4 bg-slate-900 border-r border-slate-800 flex items-center gap-1.5 shrink-0 z-10 text-cyan-400 text-[10px] font-bold tracking-widest uppercase">
         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />

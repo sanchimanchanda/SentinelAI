@@ -18,10 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} min-h-screen bg-slate-950 text-slate-50 antialiased selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col`}>
-        <div className="flex-1">
+      <body className={`${inter.className} h-screen pb-8 bg-slate-950 text-slate-50 antialiased selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col overflow-hidden`}>
+        <div className="flex-1 flex flex-col min-h-0">
           <Navbar />
-          <main className="container mx-auto p-4">{children}</main>
+          <main className="container mx-auto p-4 flex-1 flex flex-col min-h-0">{children}</main>
         </div>
         <LiveTicker />
       </body>

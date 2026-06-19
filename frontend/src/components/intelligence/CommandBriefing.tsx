@@ -57,7 +57,7 @@ export function CommandBriefing() {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto">
+      <CardContent className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto min-h-0">
         {!generated ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">

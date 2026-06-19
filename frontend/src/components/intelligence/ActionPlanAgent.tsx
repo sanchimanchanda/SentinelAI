@@ -74,7 +74,7 @@ export function ActionPlanAgent() {
           <span className="ml-auto text-[10px] text-slate-600 font-mono">Action Plan Generator</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto">
+      <CardContent className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
         {/* Input Row */}
         <div className="flex gap-2">
           <div className="flex-1">

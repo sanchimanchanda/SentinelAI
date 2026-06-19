@@ -9,7 +9,7 @@ export default function SimulatePage() {
   const [result, setResult] = useState<EventSimulationResult | null>(null);
 
   return (
-    <div className="flex flex-col gap-4 min-h-[calc(100vh-6rem)]">
+    <div className="flex flex-col gap-4 h-full overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
