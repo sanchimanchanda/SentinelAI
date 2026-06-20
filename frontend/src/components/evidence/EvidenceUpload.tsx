@@ -21,13 +21,12 @@ export function EvidenceUpload({ onDetectionComplete, blurPedestrians = true }: 
   const [selectedJunction, setSelectedJunction] = useState<number>(1);
 
   useEffect(() => {
-    fetch("/api/junctions")
-      .then(r => r.json())
+    api.getJunctions()
       .then((data: Junction[]) => {
         setJunctions(data);
         if (data.length > 0) setSelectedJunction(data[0].id);
       })
-      .catch(() => {});
+      .catch((e) => console.error("Failed to load junctions", e));
   }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,6 +36,20 @@ export function EvidenceUpload({ onDetectionComplete, blurPedestrians = true }: 
       setPreviewUrl(URL.createObjectURL(selectedFile));
       setResult(null);
       setError(null);
+    }
+  };
+
+  const loadExample = async (filename: string) => {
+    try {
+      const response = await fetch(`/example/${filename}`);
+      const blob = await response.blob();
+      const exampleFile = new File([blob], filename, { type: blob.type });
+      setFile(exampleFile);
+      setPreviewUrl(URL.createObjectURL(exampleFile));
+      setResult(null);
+      setError(null);
+    } catch (e) {
+      console.error("Failed to load example", e);
     }
   };
 
@@ -107,16 +120,37 @@ export function EvidenceUpload({ onDetectionComplete, blurPedestrians = true }: 
               </select>
             </div>
 
-            <div className="relative">
-              <input 
-                type="file" 
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                accept="image/jpeg,image/png"
-                onChange={handleFileSelect}
-              />
-              <Button variant="secondary" className="bg-slate-800 text-slate-200 hover:bg-slate-700">
-                Select Image
-              </Button>
+            <div className="flex flex-col items-center gap-4 w-full">
+              <div className="relative">
+                <input 
+                  type="file" 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                  accept="image/jpeg,image/png"
+                  onChange={handleFileSelect}
+                />
+                <Button variant="secondary" className="bg-slate-800 text-slate-200 hover:bg-slate-700">
+                  Select Image
+                </Button>
+              </div>
+
+              <div className="w-full max-w-md mt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-px bg-slate-800 flex-1"></div>
+                  <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Or Try Examples</span>
+                  <div className="h-px bg-slate-800 flex-1"></div>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => loadExample("tripleride.jpg")} className="border-slate-700 bg-slate-900/50 text-xs">Triple Ride</Button>
+                  <Button variant="outline" size="sm" onClick={() => loadExample("nohelmet.jpg")} className="border-slate-700 bg-slate-900/50 text-xs">No Helmet</Button>
+                  <Button variant="outline" size="sm" onClick={() => loadExample("helmet.jpg")} className="border-slate-700 bg-slate-900/50 text-xs">With Helmet</Button>
+                  <Button variant="outline" size="sm" onClick={() => loadExample("seatbelt.jpg")} className="border-slate-700 bg-slate-900/50 text-xs">With Seatbelt</Button>
+                  <Button variant="outline" size="sm" onClick={() => loadExample("noseatbelt.jpg")} className="border-slate-700 bg-slate-900/50 text-xs">No Seatbelt</Button>
+                  <Button variant="outline" size="sm" onClick={() => loadExample("numberplate.jpg")} className="border-slate-700 bg-slate-900/50 text-xs">Number Plate</Button>
+                  <Button variant="outline" size="sm" onClick={() => loadExample("redlight.jpg")} className="border-red-500/50 bg-red-500/10 text-xs text-red-300 hover:bg-red-500/20">🔴 Red Light</Button>
+                  <Button variant="outline" size="sm" onClick={() => loadExample("greenlight.jpg")} className="border-green-500/50 bg-green-500/10 text-xs text-green-300 hover:bg-green-500/20">🟢 Green Light</Button>
+                  <Button variant="outline" size="sm" onClick={() => loadExample("novoilation.jpg")} className="border-slate-700 bg-slate-900/50 text-xs">Clean Record</Button>
+                </div>
+              </div>
             </div>
           </>
         ) : (
@@ -138,8 +172,17 @@ export function EvidenceUpload({ onDetectionComplete, blurPedestrians = true }: 
               </select>
             </div>
 
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="Preview" className="max-h-64 object-contain rounded-lg border border-slate-700 mb-6 shadow-xl" />
+            <div className="relative w-full max-w-sm mb-6 flex justify-center mx-auto">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={previewUrl} alt="Preview" className="max-h-64 object-contain rounded-lg border border-slate-700 shadow-xl w-full" />
+              {isProcessing && (
+                <div className="absolute inset-0 bg-slate-950/80 rounded-lg flex flex-col items-center justify-center backdrop-blur-sm border border-cyan-500/30 z-10">
+                  <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mb-3" />
+                  <div className="text-cyan-400 font-bold tracking-widest text-sm animate-pulse">ANALYZING AI EVIDENCE</div>
+                  <div className="text-xs text-cyan-500/70 mt-1">Running YOLOv8 + OCR Pipeline</div>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={reset} disabled={isProcessing} className="text-slate-400">
                 Cancel

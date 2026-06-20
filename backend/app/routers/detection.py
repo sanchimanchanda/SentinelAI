@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db, execute_raw
 from app.config import settings
-from app.services.detector import detect_triple_riding
+from app.services.detector import analyze_traffic_scene
 from app.services.ocr import extract_plate
 from app.services.evidence import create_evidence_case
 
@@ -45,7 +45,7 @@ async def detect_violation(
 
         # Run detection pipeline with timing
         t_start = time.time()
-        detection = detect_triple_riding(temp_path)
+        detection = analyze_traffic_scene(temp_path)
         t_detect = time.time()
         
         crop_box = detection.get("motorcycle_box") if detection else None

@@ -4,19 +4,30 @@ import type {
   SimulationResult, EventSimulationResult, Dossier, ActionPlan, AuditLogEntry
 } from "./types";
 
-const BASE_URL = "/api";
+const BASE_URL = "http://localhost:8000/api";
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json();
+  
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "");
+    throw new Error(`API error: ${res.status} ${res.statusText} - ${errorText}`);
+  }
+  
+  const contentType = res.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return res.json();
+  }
+  
+  return res.text() as any;
 }
 
 export const api = {
   // Existing endpoints
+  getJunctions: () => fetchAPI<{id: number, name: string}[]>("/junctions"),
   getHotspots: (hours = 24) => fetchAPI<Hotspot[]>(`/hotspots?hours=${hours}`),
   getViolations: (params?: { junction_id?: number; type?: string; hours?: number; limit?: number }) => {
     const query = new URLSearchParams();
@@ -32,7 +43,14 @@ export const api = {
   getOffenders: (minSightings = 2) => fetchAPI<RepeatOffender[]>(`/offenders?min_sightings=${minSightings}`),
   getCorridors: () => fetchAPI<Corridor[]>("/corridors"),
   getDailyBriefing: () => fetchAPI<DailyBriefing>("/daily-briefing"),
-  detect: (formData: FormData) => fetch(`${BASE_URL}/detect`, { method: "POST", body: formData }).then(r => r.json()) as Promise<DetectionResult>,
+  detect: async (formData: FormData) => {
+    const res = await fetch(`${BASE_URL}/detect`, { method: "POST", body: formData });
+    if (!res.ok) {
+      const err = await res.text().catch(() => "");
+      throw new Error(`Detect API failed: ${res.status} ${err}`);
+    }
+    return res.json() as Promise<DetectionResult>;
+  },
   queryIntelligence: (question: string) => fetchAPI<IntelligenceResponse>("/intelligence", {
     method: "POST",
     body: JSON.stringify({ question }),

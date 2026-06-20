@@ -8,7 +8,7 @@ import { SystemBootOverlay } from "@/components/dashboard/SystemBootOverlay";
 import { usePolling } from "@/hooks/usePolling";
 import { api } from "@/lib/api";
 import { useState } from "react";
-import { Globe, Layers } from "lucide-react";
+import { Globe, Layers, ShieldAlert, Users, BarChart3 } from "lucide-react";
 import { ScrollingTicker } from "@/components/dashboard/ScrollingTicker";
 import { LiveViolationCounter } from "@/components/dashboard/LiveViolationCounter";
 
@@ -76,6 +76,22 @@ export default function CommandCenter() {
 
         {/* Right Panel: 38% */}
         <div className="flex-[38] flex flex-col gap-3 min-h-0 overflow-y-auto">
+          {/* Mock Dashboard Statistics */}
+          <div className="shrink-0 flex gap-2">
+            <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
+              <div className="text-[10px] uppercase text-slate-500 font-bold flex items-center gap-1.5 tracking-wider"><ShieldAlert className="w-3 h-3 text-rose-400" /> Violations Today</div>
+              <div className="text-xl font-bold font-mono text-slate-200">142</div>
+            </div>
+            <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
+              <div className="text-[10px] uppercase text-slate-500 font-bold flex items-center gap-1.5 tracking-wider"><Users className="w-3 h-3 text-amber-400" /> Repeat Offenders</div>
+              <div className="text-xl font-bold font-mono text-slate-200">12</div>
+            </div>
+            <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
+              <div className="text-[10px] uppercase text-slate-500 font-bold flex items-center gap-1.5 tracking-wider"><BarChart3 className="w-3 h-3 text-cyan-400" /> Top Violation</div>
+              <div className="text-xs font-bold text-slate-200 mt-1.5 truncate">No Helmet</div>
+            </div>
+          </div>
+
           {/* Alerts */}
           <div className="shrink-0">
             <AlertsPanel />

@@ -124,7 +124,7 @@ Open `http://localhost:3000` in your browser.
 
 ## 🚀 Future Roadmap
 
-- **Phase 1 (Current)**: Static Image Analysis, Digital Twin, and LLM Intelligence.
-- **Phase 2**: RTSP Camera Stream Integration (Live Video Processing).
+- **Phase 1 (Current)**: Multi-Modal Image Analysis (Helmet, Seatbelt, Red Light, Tripling), Digital Twin, and LLM Intelligence.
+- **Phase 2 (Planned)**: Video Analysis Integration (Frame sampling + YOLO Object Tracking `model.track` to aggregate violations over time).
 - **Phase 3**: Edge Deployment (Running quantized YOLO models directly on camera hardware).
 - **Phase 4**: Full Integration with existing e-Challan systems.

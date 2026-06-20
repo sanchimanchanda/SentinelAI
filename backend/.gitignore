@@ -4,3 +4,4 @@ __pycache__/
 .env
 sentinel.db
 *.pt
+evidence/
