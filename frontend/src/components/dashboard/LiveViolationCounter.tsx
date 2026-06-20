@@ -14,9 +14,9 @@ export function LiveViolationCounter() {
   // Since we don't have a total count endpoint in api.ts right now except getDailyBriefing...
   const { data: briefing } = usePolling(api.getDailyBriefing, 60000);
 
-  // We can add a "simulated" ticking effect by combining briefing.total_violations with recent activity length.
-  // Actually, if we just use briefing.total_violations + (recent?.length || 0) just to make it tick.
-  const baseTotal = briefing?.total_violations || 14820;
+  // Calculate total from zone stats if available, otherwise use base
+  const calculatedTotal = briefing?.zone_stats?.reduce((acc, zone) => acc + zone.violation_count, 0) || 14820;
+  const baseTotal = calculatedTotal;
 
   return (
     <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-lg px-4 py-1.5">
