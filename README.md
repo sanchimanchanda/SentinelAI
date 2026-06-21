@@ -75,11 +75,12 @@ A Next.js-powered live dashboard featuring:
 
 ### 1. Backend Setup
 
-```bash
-git clone https://github.com/mmaroof487/SentinelAI.git
-cd SentinelAI/backend
+Open a terminal, navigate to the `backend` folder, and run:
 
-# Create virtual environment
+```bash
+cd backend
+
+# Create and activate a virtual environment
 python -m venv venv
 
 # Activate (Windows)
@@ -97,12 +98,14 @@ echo "GEMINI_API_KEY=your_api_key_here" > .env
 # Run the backend
 uvicorn app.main:app --reload --port 8000
 ```
-*Note: The backend automatically generates and seeds a SQLite database with deterministic data on startup.*
+*Note: The YOLOv8 model weights will automatically download the first time you run the app, and the backend automatically generates and seeds a SQLite database with deterministic data on startup.*
 
 ### 2. Frontend Setup
 
+In a new, separate terminal, navigate to the `frontend` folder and run:
+
 ```bash
-cd ../frontend
+cd frontend
 
 # Install dependencies
 npm install
