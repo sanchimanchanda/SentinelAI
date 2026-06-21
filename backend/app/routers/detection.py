@@ -22,6 +22,7 @@ async def detect_violation(
     image: UploadFile = File(...),
     junction_id: int = Form(...),
     blur_pedestrians: bool = Form(True),
+    normalize: bool = Form(False),
     db: Session = Depends(get_db),
 ):
     """Upload image → detect violation → OCR → create case."""
@@ -45,7 +46,7 @@ async def detect_violation(
 
         # Run detection pipeline with timing
         t_start = time.time()
-        detection = analyze_traffic_scene(temp_path)
+        detection = analyze_traffic_scene(temp_path, normalize=normalize)
         t_detect = time.time()
         
         crop_box = detection.get("motorcycle_box") if detection else None

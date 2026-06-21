@@ -19,6 +19,7 @@ export function EvidenceUpload({ onDetectionComplete, blurPedestrians = true }: 
   const [error, setError] = useState<string | null>(null);
   const [junctions, setJunctions] = useState<Junction[]>([]);
   const [selectedJunction, setSelectedJunction] = useState<number>(1);
+  const [normalize, setNormalize] = useState(false);
 
   useEffect(() => {
     api.getJunctions()
@@ -63,6 +64,7 @@ export function EvidenceUpload({ onDetectionComplete, blurPedestrians = true }: 
     formData.append("image", file);
     formData.append("junction_id", String(selectedJunction));
     formData.append("blur_pedestrians", blurPedestrians ? "true" : "false");
+    formData.append("normalize", normalize ? "true" : "false");
 
     try {
       const data = await api.detect(formData);
@@ -118,6 +120,19 @@ export function EvidenceUpload({ onDetectionComplete, blurPedestrians = true }: 
                   <option key={j.id} value={j.id}>{j.name}</option>
                 ))}
               </select>
+              
+              <div className="flex items-center gap-2 mt-3 pl-1">
+                <input 
+                  type="checkbox" 
+                  id="normalize-empty"
+                  checked={normalize}
+                  onChange={(e) => setNormalize(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-cyan-500/50"
+                />
+                <label htmlFor="normalize-empty" className="text-sm text-slate-300 select-none cursor-pointer">
+                  Enhance Low Quality Images
+                </label>
+              </div>
             </div>
 
             <div className="flex flex-col items-center gap-4 w-full">
@@ -171,6 +186,20 @@ export function EvidenceUpload({ onDetectionComplete, blurPedestrians = true }: 
                   <option key={j.id} value={j.id}>{j.name}</option>
                 ))}
               </select>
+              
+              <div className="flex items-center gap-2 mt-3 pl-1">
+                <input 
+                  type="checkbox" 
+                  id="normalize-preview"
+                  checked={normalize}
+                  onChange={(e) => setNormalize(e.target.checked)}
+                  disabled={isProcessing}
+                  className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-cyan-500/50 disabled:opacity-50"
+                />
+                <label htmlFor="normalize-preview" className={`text-sm select-none cursor-pointer ${isProcessing ? 'text-slate-500' : 'text-slate-300'}`}>
+                  Enhance Low Quality Images
+                </label>
+              </div>
             </div>
 
             <div className="relative w-full max-w-sm mb-6 flex justify-center mx-auto">

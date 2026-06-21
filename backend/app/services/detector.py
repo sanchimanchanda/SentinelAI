@@ -73,20 +73,112 @@ def check_seatbelt(crop_img):
                 return True
     return False
 
-def analyze_traffic_scene(image_path: str) -> dict:
+
+def detect_wrong_side_driving(img_cv: np.ndarray, vehicles: list) -> list | None:
     """
-    Modular detection pipeline:
-    - Traffic Light state
-    - Vehicle (Stop Line Violation on Red)
-    - Motorcycle (Triple Riding, No Helmet)
-    - Enclosed Vehicle (No Seatbelt)
+    Detect wrong-side driving using lane-line analysis.
+    Returns the bounding box of the offending vehicle if found, otherwise None.
+
+    Strategy (tuned for Indian CCTV highway cameras):
+    1. Crop the lower 60% of the frame (road surface only).
+    2. Use Canny + HoughLinesP to find lane-marking candidates.
+    3. Filter for near-vertical lines (lane dividers converging toward vanishing point).
+    4. Split lines into left-half and right-half groups to estimate road boundaries.
+    5. Compute the road centre from these boundaries.
+    6. India drives LEFT; an approaching vehicle whose centre-x is RIGHT of
+       the road centre (plus a 10% tolerance margin) is flagged as wrong-side.
+
+    Safety guards:
+    - Requires at least one line detected on EACH side of the frame centre.
+      This suppresses false positives on close-ups, interiors, and images
+      without clear road geometry.
+    - Only flags vehicles in the lower 70% of the frame (close to camera = high confidence).
     """
-    results = model(image_path, verbose=False)
-    boxes = results[0].boxes
-    
+    if not vehicles:
+        return None
+
+    h, w = img_cv.shape[:2]
+
+    # Region of interest: lower 60% = road surface only
+    roi_y = int(h * 0.4)
+    roi = img_cv[roi_y:, :]
+
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, 50, 150)
+
+    lines = cv2.HoughLinesP(
+        edges, 1, np.pi / 180,
+        threshold=40,
+        minLineLength=int(w * 0.06),  # at least 6% of frame width
+        maxLineGap=30,
+    )
+
+    left_found = False
+    right_found = False
+    road_left_x = 0.0
+    road_right_x = float(w)
+
+    if lines is not None:
+        left_xs, right_xs = [], []
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            # Filter: keep only lines with significant vertical component
+            # (lane markings converge toward vanishing point, so they're steep)
+            if abs(y2 - y1) < 10:
+                continue  # skip nearly horizontal lines
+            cx = (x1 + x2) / 2.0
+            if cx < w / 2:
+                left_xs.append(cx)
+            else:
+                right_xs.append(cx)
+
+        if left_xs:
+            road_left_x = float(max(left_xs))   # rightmost of left-side lines
+            left_found = True
+        if right_xs:
+            road_right_x = float(min(right_xs))  # leftmost of right-side lines
+            right_found = True
+
+    # SAFETY: only proceed when BOTH sides have lane markings detected.
+    # This prevents false positives on images without clear road geometry.
+    if not left_found or not right_found:
+        return None
+
+    road_center_x = (road_left_x + road_right_x) / 2.0
+    margin = w * 0.10  # 10% tolerance
+
+    for v in vehicles:
+        vx1, vy1, vx2, vy2 = v.xyxy[0].tolist()
+        vehicle_cx = (vx1 + vx2) / 2.0
+
+        # Only check vehicles in the lower 70% of the frame (closer = more reliable)
+        vehicle_cy = (vy1 + vy2) / 2.0
+        if vehicle_cy < h * 0.3:
+            continue
+
+        # Vehicle centre is RIGHT of road centre + margin → wrong side (India is LHT)
+        if vehicle_cx > road_center_x + margin:
+            return [vx1, vy1, vx2, vy2]
+
+    return None
+
+from app.services.enhancer import normalize_image
+
+def analyze_traffic_scene(image_path: str, normalize: bool = False) -> dict:
+    """
+    Analyzes an image to detect vehicles, people, and traffic violations.
+    If normalize=True, applies full-frame image normalization (low-light, rain, blur).
+    """
     img_cv = cv2.imread(image_path)
     if img_cv is None:
         return {"violation": "None", "confidence": 0.0, "vehicle": "unknown", "persons_detected": 0}
+        
+    if normalize:
+        img_cv = normalize_image(img_cv)
+
+    results = model(img_cv, verbose=False)
+    boxes = results[0].boxes
         
     img_height, img_width = img_cv.shape[:2]
     STOP_LINE_Y = img_height * 0.60
@@ -218,8 +310,14 @@ def analyze_traffic_scene(image_path: str) -> dict:
                 violations.append("No Seatbelt")
             break
 
-    # Pick the primary vehicle box for OCR
-    primary_vehicle_box = best_moto_box or best_car_box
+    # --- 5. Wrong-Side Driving Processing ---
+    wrong_side_box = detect_wrong_side_driving(img_cv, vehicles)
+    if wrong_side_box is not None:
+        if "Wrong-Side Driving" not in violations:
+            violations.append("Wrong-Side Driving")
+
+    # Pick the primary vehicle box for OCR and UI highlighting
+    primary_vehicle_box = wrong_side_box or best_moto_box or best_car_box
     if primary_vehicle_box is None and vehicles:
         primary_vehicle_box = vehicles[0].xyxy[0].tolist()
         if float(vehicles[0].conf[0]) > highest_conf:
